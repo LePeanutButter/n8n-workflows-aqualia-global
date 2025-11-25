@@ -23,22 +23,11 @@
         ]
       ]
     },
-    "Simple Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_memory",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Fetch SCADA Data": {
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "If",
             "type": "main",
             "index": 0
           }
@@ -104,7 +93,7 @@
       "main": [
         [
           {
-            "node": "HTML",
+            "node": "If1",
             "type": "main",
             "index": 0
           }
@@ -126,6 +115,55 @@
           }
         ]
       ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get a dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a dashboard": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "createdAt": "2025-11-17T21:08:28.002Z",
@@ -136,20 +174,6 @@
   },
   "name": "SCADA Sim Subworkflow",
   "nodes": [
-    {
-      "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Code in JavaScript').item }}"
-      },
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "position": [
-        336,
-        -240
-      ],
-      "id": "fa1c0e36-f202-4a2d-8f79-0914e520f3c5",
-      "name": "Simple Memory"
-    },
     {
       "parameters": {
         "options": {}
@@ -188,13 +212,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH\n\n-- =============================\n-- 1) OPERACIÓN DIARIA (24h)\n-- =============================\ndaily AS (\n    SELECT\n        'daily' AS dataset_type,\n\n        d.device_id,\n        d.device_name,\n        d.device_type,\n        d.location,\n\n        t.tag_id,\n        t.tag_name,\n        t.tag_type,\n        t.units,\n        t.min_value,\n        t.max_value,\n\n        tv.value_id,\n        tv.timestamp AS reading_time,\n        tv.value,\n        tv.quality,\n\n        (tv.value - t.max_value) AS above_max,\n        (t.min_value - tv.value) AS below_min,\n\n        -- Columnas del histórico dejadas en NULL\n        NULL::numeric AS delta_value,\n        NULL::numeric AS moving_avg_1h,\n        NULL::numeric AS std_1h,\n        NULL::numeric AS z_score\n\n    FROM TagValues tv\n    JOIN Tags t ON tv.tag_id = t.tag_id\n    JOIN Devices d ON t.device_id = d.device_id\n\n    WHERE tv.timestamp >= (CURRENT_DATE - INTERVAL '1 day')\n      AND tv.timestamp < CURRENT_DATE\n),\n\n-- =============================\n-- 2) HISTÓRICO (30 días)\n-- =============================\nhistory AS (\n    SELECT\n        'history' AS dataset_type,\n\n        d.device_id,\n        d.device_name,\n        d.device_type,\n        d.location,\n\n        t.tag_id,\n        t.tag_name,\n        t.tag_type,\n        t.units,\n        t.min_value,\n        t.max_value,\n\n        tv.value_id,\n        tv.timestamp AS reading_time,\n        tv.value,\n        tv.quality,\n\n        (tv.value - t.max_value) AS above_max,\n        (t.min_value - tv.value) AS below_min,\n\n        -- Velocidad de cambio Δvalue\n        tv.value - LAG(tv.value) OVER (\n            PARTITION BY tv.tag_id ORDER BY tv.timestamp\n        ) AS delta_value,\n\n        -- Promedio móvil 1h\n        AVG(tv.value) OVER (\n            PARTITION BY tv.tag_id\n            ORDER BY tv.timestamp\n            RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW\n        ) AS moving_avg_1h,\n\n        -- Desviación móvil\n        STDDEV_POP(tv.value) OVER (\n            PARTITION BY tv.tag_id\n            ORDER BY tv.timestamp\n            RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW\n        ) AS std_1h,\n\n        -- Z-score\n        CASE\n            WHEN STDDEV_POP(tv.value) OVER (\n                PARTITION BY tv.tag_id\n                ORDER BY tv.timestamp\n                RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW\n            ) > 0\n            THEN (\n                tv.value -\n                AVG(tv.value) OVER (\n                    PARTITION BY tv.tag_id\n                    ORDER BY tv.timestamp\n                    RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW\n                )\n            ) /\n            STDDEV_POP(tv.value) OVER (\n                PARTITION BY tv.tag_id\n                ORDER BY tv.timestamp\n                RANGE BETWEEN INTERVAL '1 hour' PRECEDING AND CURRENT ROW\n            )\n            ELSE 0\n        END AS z_score\n\n    FROM TagValues tv\n    JOIN Tags t ON tv.tag_id = t.tag_id\n    JOIN Devices d ON t.device_id = d.device_id\n\n    WHERE tv.timestamp >= (CURRENT_DATE - INTERVAL '30 days')\n)\n\n-- =============================\n-- RESULTADO\n-- =============================\nSELECT * FROM daily\nUNION ALL\nSELECT * FROM history\nORDER BY reading_time;\n",
+        "query": "WITH\n-- 1️⃣ TAG VALUES DEL DÍA\nvalues_today AS (\n    SELECT \n        tv.tag_id,\n        tv.timestamp,\n        tv.value,\n        LAG(tv.value) OVER (PARTITION BY tv.tag_id ORDER BY tv.timestamp) AS prev_value\n    FROM TagValues tv\n    WHERE tv.timestamp >= CURRENT_DATE\n),\n\n-- 2️⃣ RESUMEN POR TAG (mínimo, máximo, promedio, variación máxima)\ntag_stats AS (\n    SELECT\n        t.device_id,\n        t.tag_id,\n        t.tag_name,\n        MIN(v.value) AS min_value_day,\n        MAX(v.value) AS max_value_day,\n        AVG(v.value) AS avg_value_day,\n        MAX(ABS(v.value - v.prev_value)) AS max_variation\n    FROM values_today v\n    JOIN Tags t ON v.tag_id = t.tag_id\n    GROUP BY t.device_id, t.tag_id, t.tag_name\n),\n\n-- 3️⃣ VALORES FUERA DE RANGO\nout_of_range AS (\n    SELECT \n        v.tag_id,\n        COUNT(*) AS out_of_range_count\n    FROM values_today v\n    JOIN Tags t ON v.tag_id = t.tag_id\n    WHERE (v.value < t.min_value OR v.value > t.max_value)\n    GROUP BY v.tag_id\n),\n\n-- 4️⃣ ALARMAS DEL DÍA\nalarms_today AS (\n    SELECT \n        t.tag_id,\n        COUNT(*) AS alarm_count\n    FROM Alarms a\n    JOIN Tags t ON a.tag_id = t.tag_id\n    WHERE a.timestamp >= CURRENT_DATE\n    GROUP BY t.tag_id\n)\n\n-- 5️⃣ SALIDA FINAL: RESUMEN POR DISPOSITIVO Y TAG\nSELECT \n    d.device_id,\n    d.device_name,\n    ts.tag_id,\n    ts.tag_name,\n    ts.min_value_day,\n    ts.max_value_day,\n    ts.avg_value_day,\n    ts.max_variation,\n    COALESCE(o.out_of_range_count, 0) AS out_of_range_count,\n    COALESCE(a.alarm_count, 0) AS alarm_count\nFROM tag_stats ts\nJOIN Devices d ON ts.device_id = d.device_id\nLEFT JOIN out_of_range o ON ts.tag_id = o.tag_id\nLEFT JOIN alarms_today a ON ts.tag_id = a.tag_id\nORDER BY d.device_id, ts.tag_name;\n",
         "options": {}
       },
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -128,
+        -336,
         -416
       ],
       "id": "b5977f22-9f1d-4811-b60f-733ddfa219c8",
@@ -231,7 +255,7 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -336,
+        -544,
         -416
       ],
       "id": "fce25b71-80dc-497e-b308-2ca5a3ad0951",
@@ -257,7 +281,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        960,
+        912,
         -416
       ],
       "id": "104ddacf-2423-4f90-864f-862c75aaa68a",
@@ -371,13 +395,13 @@
     },
     {
       "parameters": {
-        "html": "<html>\n  <body style=\"font-family: Arial, Helvetica, sans-serif; background-color:#f4f8fb; padding: 20px; color:#003049;\">\n\n    <div style=\"max-width: 700px; margin: auto; background: #ffffff; padding: 25px; border-radius: 8px; border: 1px solid #dce6ee;\">\n\n      <h2 style=\"color:#005f99; margin-bottom: 10px; font-weight: 600;\">\n        Reporte de Dispositivos con Fallas\n      </h2>\n\n      <p style=\"font-size: 15px; color:#003049; line-height: 1.5;\">\n        Se ha detectado actividad anómala en los siguientes dispositivos. Este informe ha sido generado de forma automática por el sistema de monitoreo.\n      </p>\n\n      <div style=\"margin-top: 25px;\">\n        {{\n          $input.all().map(item => `\n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: ${item.json.device_id}\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                ${item.json.description}\n              </p>\n            </div>\n          `).join(\"\")\n        }}\n      </div>\n\n      <p style=\"margin-top: 30px; font-size: 13px; color:#6c7a86; text-align: center;\">\n        Este es un aviso automático generado por el sistema de supervisión de infraestructura.  \n      </p>\n\n    </div>\n\n  </body>\n</html>\n"
+        "html": "<html>\n  <body style=\"font-family: Arial, Helvetica, sans-serif; background-color:#f4f8fb; padding: 20px; color:#003049;\">\n\n    <div style=\"max-width: 700px; margin: auto; background: #ffffff; padding: 25px; border-radius: 8px; border: 1px solid #dce6ee;\">\n\n      <h2 style=\"color:#005f99; margin-bottom: 10px; font-weight: 600;\">\n        Reporte de Dispositivos con Fallas\n      </h2>\n\n      <p style=\"font-size: 15px; color:#003049; line-height: 1.5;\">\n        Se ha detectado actividad anómala en los siguientes dispositivos. Este informe ha sido generado de forma automática por el sistema de monitoreo.\n      </p>\n\n      <div style=\"margin-top: 25px;\">\n        {{\n          $input.all().map(i => i.json.data).flat().map(item => `\n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: ${item.device_id}\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                ${item.description}\n              </p>\n            </div>\n          `).join(\"\")\n        }}\n      </div>\n\n      <p style=\"margin-top: 30px; font-size: 13px; color:#6c7a86; text-align: center;\">\n        Este es un aviso automático generado por el sistema de supervisión de infraestructura.  \n      </p>\n\n    </div>\n\n  </body>\n</html>\n"
       },
       "type": "n8n-nodes-base.html",
       "typeVersion": 1.2,
       "position": [
-        1120,
-        -416
+        1568,
+        -432
       ],
       "id": "1110ebae-aeef-4e60-ade7-c003b94e4f15",
       "name": "HTML"
@@ -393,8 +417,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        1312,
-        -416
+        1792,
+        -432
       ],
       "id": "107d128e-2ab2-4b3f-bb6b-ff64e55475a9",
       "name": "Send email",
@@ -405,9 +429,397 @@
           "name": "SMTP account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5493e406-d608-49ba-ae3c-cb35c845cd34",
+              "leftValue": "={{ !(Object.keys($json).length === 1 && $json.success === true) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        -416
+      ],
+      "id": "d4c6e179-a7f2-4e87-8643-f510e81b0396",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "25874bfc-d965-4a09-8e97-a9f45d9d0110",
+              "leftValue": "={{ $items().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1072,
+        -416
+      ],
+      "id": "ab5de91c-3f50-41b8-849c-4cb853bd98c2",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        -432
+      ],
+      "id": "8c936118-6ba5-4c9c-a581-9031304edf84",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dashboardUidOrUrl": "https://andrescalderonr.grafana.net/d/an6tqqn/centro-de-monitoreo-integral?orgId=1&from=2025-11-24T22:47:09.852Z&to=2025-11-25T04:47:09.852Z&timezone=browser&viewPanel=panel-1"
+      },
+      "type": "n8n-nodes-base.grafana",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -224
+      ],
+      "id": "6683d6ae-d7a1-4ed3-8db2-8f0e72da87dc",
+      "name": "Get a dashboard",
+      "credentials": {
+        "grafanaApi": {
+          "id": "5NsYOYoxDBbSmYQ0",
+          "name": "Grafana account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://andrescalderonr.grafana.net/api/dashboards/db",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "grafanaApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"dashboard\": {{ Object.assign($json.dashboard, { version: -1 }).toJsonString() }},\n  \"overwrite\": true\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1728,
+        -224
+      ],
+      "id": "bac0eab6-4445-4c52-afb7-24796438015a",
+      "name": "HTTP Request",
+      "credentials": {
+        "grafanaApi": {
+          "id": "5NsYOYoxDBbSmYQ0",
+          "name": "Grafana account"
+        }
+      }
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "HTML": [
+      {
+        "json": {
+          "html": "<html>\n  <body style=\"font-family: Arial, Helvetica, sans-serif; background-color:#f4f8fb; padding: 20px; color:#003049;\">\n\n    <div style=\"max-width: 700px; margin: auto; background: #ffffff; padding: 25px; border-radius: 8px; border: 1px solid #dce6ee;\">\n\n      <h2 style=\"color:#005f99; margin-bottom: 10px; font-weight: 600;\">\n        Reporte de Dispositivos con Fallas\n      </h2>\n\n      <p style=\"font-size: 15px; color:#003049; line-height: 1.5;\">\n        Se ha detectado actividad anómala en los siguientes dispositivos. Este informe ha sido generado de forma automática por el sistema de monitoreo.\n      </p>\n\n      <div style=\"margin-top: 25px;\">\n        \n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: 1\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata.\n              </p>\n            </div>\n          \n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: 2\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente.\n              </p>\n            </div>\n          \n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: 4\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa.\n              </p>\n            </div>\n          \n            <div style=\"\n              border-left: 4px solid #4bb3fd;\n              padding: 12px 15px;\n              margin-bottom: 15px;\n              background: #f0f7fc;\n              border-radius: 6px;\n            \">\n              <strong style=\"font-size: 15px; color:#003049;\">\n                Dispositivo ID: 5\n              </strong>\n              <p style=\"margin: 6px 0 0 0; font-size: 14px; color:#003049;\">\n                El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente.\n              </p>\n            </div>\n          \n      </div>\n\n      <p style=\"margin-top: 30px; font-size: 13px; color:#6c7a86; text-align: center;\">\n        Este es un aviso automático generado por el sistema de supervisión de infraestructura.  \n      </p>\n\n    </div>\n\n  </body>\n</html>\n"
+        }
+      }
+    ],
+    "Aggregate": [
+      {
+        "json": {
+          "data": [
+            {
+              "device_id": 1,
+              "will_fail": true,
+              "description": "Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata."
+            },
+            {
+              "device_id": 2,
+              "will_fail": true,
+              "description": "Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente."
+            },
+            {
+              "device_id": 4,
+              "will_fail": true,
+              "description": "Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa."
+            },
+            {
+              "device_id": 5,
+              "will_fail": true,
+              "description": "El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente."
+            }
+          ]
+        }
+      }
+    ],
+    "Code in JavaScript1": [
+      {
+        "json": {
+          "device_id": 1,
+          "will_fail": true,
+          "description": "Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata."
+        }
+      },
+      {
+        "json": {
+          "device_id": 2,
+          "will_fail": true,
+          "description": "Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente."
+        }
+      },
+      {
+        "json": {
+          "device_id": 4,
+          "will_fail": true,
+          "description": "Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa."
+        }
+      },
+      {
+        "json": {
+          "device_id": 5,
+          "will_fail": true,
+          "description": "El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente."
+        }
+      }
+    ],
+    "Insert rows in a table": [
+      {
+        "json": {
+          "id": "11",
+          "created_at": "2025-11-25T02:55:33.169Z",
+          "device_id": 1,
+          "will_fail": true,
+          "description": "Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata."
+        }
+      },
+      {
+        "json": {
+          "id": "12",
+          "created_at": "2025-11-25T02:55:33.171Z",
+          "device_id": 2,
+          "will_fail": true,
+          "description": "Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente."
+        }
+      },
+      {
+        "json": {
+          "id": "13",
+          "created_at": "2025-11-25T02:55:33.172Z",
+          "device_id": 3,
+          "will_fail": false,
+          "description": "La válvula de agua primaria muestra un comportamiento operativo normal. No se han registrado alarmas ni valores fuera de rango, y la variación es consistente con su funcionamiento."
+        }
+      },
+      {
+        "json": {
+          "id": "14",
+          "created_at": "2025-11-25T02:55:33.173Z",
+          "device_id": 4,
+          "will_fail": true,
+          "description": "Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa."
+        }
+      },
+      {
+        "json": {
+          "id": "15",
+          "created_at": "2025-11-25T02:55:33.174Z",
+          "device_id": 5,
+          "will_fail": true,
+          "description": "El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente."
+        }
+      }
+    ],
+    "Split Out": [
+      {
+        "json": {
+          "device_id": 1,
+          "will_fail": true,
+          "description": "Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata."
+        }
+      },
+      {
+        "json": {
+          "device_id": 2,
+          "will_fail": true,
+          "description": "Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente."
+        }
+      },
+      {
+        "json": {
+          "device_id": 3,
+          "will_fail": false,
+          "description": "La válvula de agua primaria muestra un comportamiento operativo normal. No se han registrado alarmas ni valores fuera de rango, y la variación es consistente con su funcionamiento."
+        }
+      },
+      {
+        "json": {
+          "device_id": 4,
+          "will_fail": true,
+          "description": "Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa."
+        }
+      },
+      {
+        "json": {
+          "device_id": 5,
+          "will_fail": true,
+          "description": "El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente."
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": [
+            {
+              "device_id": 1,
+              "will_fail": true,
+              "description": "Se ha detectado una alarma ('alarm_count': 1) para el sensor de temperatura de la caldera, lo cual indica una posible anomalía que requiere investigación inmediata."
+            },
+            {
+              "device_id": 2,
+              "will_fail": true,
+              "description": "Se ha registrado una alarma ('alarm_count': 1) en el sensor de presión de la tubería. Las alarmas en sistemas de presión pueden indicar fugas o fallas críticas, requiriendo atención urgente."
+            },
+            {
+              "device_id": 3,
+              "will_fail": false,
+              "description": "La válvula de agua primaria muestra un comportamiento operativo normal. No se han registrado alarmas ni valores fuera de rango, y la variación es consistente con su funcionamiento."
+            },
+            {
+              "device_id": 4,
+              "will_fail": true,
+              "description": "Se ha activado una alarma ('alarm_count': 1) en el motor de la bomba principal. Esto es una indicación crítica de posible mal funcionamiento que podría llevar a una falla operativa."
+            },
+            {
+              "device_id": 5,
+              "will_fail": true,
+              "description": "El PLC de la Línea 4 ha registrado una alarma ('alarm_count': 1) y sus valores de operación diarios (min, max, avg) son todos cero con variación nula, sugiriendo un posible estado de falla o inactividad crítica. Requiere verificación urgente."
+            }
+          ]
+        }
+      }
+    ],
+    "Code in JavaScript": [
+      {
+        "json": {
+          "unified": "[\n  {\n    \"device_id\": 1,\n    \"device_name\": \"Sensor Temperatura Caldera 1\",\n    \"tag_id\": 1,\n    \"tag_name\": \"TEMP_CALDERA1\",\n    \"min_value_day\": 85.2,\n    \"max_value_day\": 88.5,\n    \"avg_value_day\": 86.9333333333333,\n    \"max_variation\": 1.89999999999999,\n    \"out_of_range_count\": \"0\",\n    \"alarm_count\": \"1\"\n  },\n  {\n    \"device_id\": 2,\n    \"device_name\": \"Sensor Presión Tubería 3\",\n    \"tag_id\": 2,\n    \"tag_name\": \"PRES_TUB3\",\n    \"min_value_day\": 11.8,\n    \"max_value_day\": 13.2,\n    \"avg_value_day\": 12.3666666666667,\n    \"max_variation\": 1.4,\n    \"out_of_range_count\": \"0\",\n    \"alarm_count\": \"1\"\n  },\n  {\n    \"device_id\": 3,\n    \"device_name\": \"Válvula de Agua Primaria\",\n    \"tag_id\": 3,\n    \"tag_name\": \"VALV_AGUA_PRIM\",\n    \"min_value_day\": 0,\n    \"max_value_day\": 100,\n    \"avg_value_day\": 33.3333333333333,\n    \"max_variation\": 100,\n    \"out_of_range_count\": \"0\",\n    \"alarm_count\": \"0\"\n  },\n  {\n    \"device_id\": 4,\n    \"device_name\": \"Motor Bomba Principal\",\n    \"tag_id\": 4,\n    \"tag_name\": \"AMP_BOMBA_PRINC\",\n    \"min_value_day\": 180,\n    \"max_value_day\": 220,\n    \"avg_value_day\": 195,\n    \"max_variation\": 35,\n    \"out_of_range_count\": \"0\",\n    \"alarm_count\": \"1\"\n  },\n  {\n    \"device_id\": 5,\n    \"device_name\": \"PLC Línea 4\",\n    \"tag_id\": 5,\n    \"tag_name\": \"PLC_L4_STATUS\",\n    \"min_value_day\": 0,\n    \"max_value_day\": 0,\n    \"avg_value_day\": 0,\n    \"max_variation\": null,\n    \"out_of_range_count\": \"0\",\n    \"alarm_count\": \"1\"\n  }\n]"
+        }
+      }
+    ],
+    "Fetch SCADA Data": [
+      {
+        "json": {
+          "device_id": 1,
+          "device_name": "Sensor Temperatura Caldera 1",
+          "tag_id": 1,
+          "tag_name": "TEMP_CALDERA1",
+          "min_value_day": 85.2,
+          "max_value_day": 88.5,
+          "avg_value_day": 86.9333333333333,
+          "max_variation": 1.89999999999999,
+          "out_of_range_count": "0",
+          "alarm_count": "1"
+        }
+      },
+      {
+        "json": {
+          "device_id": 2,
+          "device_name": "Sensor Presión Tubería 3",
+          "tag_id": 2,
+          "tag_name": "PRES_TUB3",
+          "min_value_day": 11.8,
+          "max_value_day": 13.2,
+          "avg_value_day": 12.3666666666667,
+          "max_variation": 1.4,
+          "out_of_range_count": "0",
+          "alarm_count": "1"
+        }
+      },
+      {
+        "json": {
+          "device_id": 3,
+          "device_name": "Válvula de Agua Primaria",
+          "tag_id": 3,
+          "tag_name": "VALV_AGUA_PRIM",
+          "min_value_day": 0,
+          "max_value_day": 100,
+          "avg_value_day": 33.3333333333333,
+          "max_variation": 100,
+          "out_of_range_count": "0",
+          "alarm_count": "0"
+        }
+      },
+      {
+        "json": {
+          "device_id": 4,
+          "device_name": "Motor Bomba Principal",
+          "tag_id": 4,
+          "tag_name": "AMP_BOMBA_PRINC",
+          "min_value_day": 180,
+          "max_value_day": 220,
+          "avg_value_day": 195,
+          "max_variation": 35,
+          "out_of_range_count": "0",
+          "alarm_count": "1"
+        }
+      },
+      {
+        "json": {
+          "device_id": 5,
+          "device_name": "PLC Línea 4",
+          "tag_id": 5,
+          "tag_name": "PLC_L4_STATUS",
+          "min_value_day": 0,
+          "max_value_day": 0,
+          "avg_value_day": 0,
+          "max_variation": null,
+          "out_of_range_count": "0",
+          "alarm_count": "1"
+        }
+      }
+    ]
+  },
   "settings": {
     "executionOrder": "v1"
   },
@@ -423,6 +835,6 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 0,
-  "updatedAt": "2025-11-18T03:33:33.000Z",
-  "versionId": "144df3b1-f941-490e-b098-106ae677f4a4"
+  "updatedAt": "2025-11-25T05:17:26.000Z",
+  "versionId": "7ac23c6c-3cd4-490f-a385-3f5fcf54608e"
 }
