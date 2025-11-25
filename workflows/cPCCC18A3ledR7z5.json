@@ -1,0 +1,401 @@
+{
+  "active": false,
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Tables (IF NOT EXISTS)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tables (IF NOT EXISTS)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Open Tasks",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Active Employees",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Employees": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Open Tasks": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Insert employee_events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert employee_events": {
+      "main": [
+        [
+          {
+            "node": "Function1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function1": {
+      "main": [
+        [
+          {
+            "node": "Insert audit_logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert audit_logs": {
+      "main": [
+        [
+          {
+            "node": "Resolve Employee Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Employee Email": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Email (SMTP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert Email (SMTP)": {
+      "main": [
+        [
+          {
+            "node": "Function2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-11-21T00:04:20.960Z",
+  "id": "cPCCC18A3ledR7z5",
+  "isArchived": false,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "name": "ERM - Employee & Resource Management (Create Tables + Daily Analysis)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1648,
+        0
+      ],
+      "id": "8f8cee0e-e9d6-4fa7-92a6-34c44ebd82d7",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Crear esquema ERM: tablas básicas\nBEGIN;\n\n-- Tabla empleados\nCREATE TABLE IF NOT EXISTS public.employees (\n  id SERIAL PRIMARY KEY,\n  full_name TEXT NOT NULL,\n  email TEXT UNIQUE,\n  role TEXT,\n  status TEXT DEFAULT 'active',\n  team_id INTEGER,\n  hire_date TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),\n  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),\n  updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()\n);\n\n-- Tabla teams (equipos/áreas)\nCREATE TABLE IF NOT EXISTS public.teams (\n  id SERIAL PRIMARY KEY,\n  team_name TEXT NOT NULL,\n  leader_id INTEGER,\n  description TEXT,\n  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()\n);\n\n-- Tabla tasks / work_orders (órdenes/tareas internas que generan carga)\nCREATE TABLE IF NOT EXISTS public.tasks (\n  id SERIAL PRIMARY KEY,\n  title TEXT NOT NULL,\n  description TEXT,\n  assigned_to INTEGER, -- employee id\n  priority TEXT DEFAULT 'normal',\n  status TEXT DEFAULT 'open',\n  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),\n  due_date TIMESTAMP WITHOUT TIME ZONE NULL\n);\n\n-- Tabla de eventos/inicidencias del personal\nCREATE TABLE IF NOT EXISTS public.employee_events (\n  id SERIAL PRIMARY KEY,\n  employee_id INTEGER NOT NULL,\n  event_type TEXT NOT NULL, -- e.g. 'overload', 'absence', 'reassignment', 'incident'\n  severity TEXT DEFAULT 'medium',\n  description TEXT,\n  metadata JSONB DEFAULT '{}',\n  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()\n);\n\n-- Tabla de auditoría (logs del workflow / acciones manuales)\nCREATE TABLE IF NOT EXISTS public.audit_logs (\n  id SERIAL PRIMARY KEY,\n  workflow_name TEXT NOT NULL,\n  action TEXT NOT NULL,\n  payload JSONB,\n  result TEXT,\n  created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()\n);\n\n-- Índices útiles\nCREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON public.tasks (assigned_to);\nCREATE INDEX IF NOT EXISTS idx_employee_events_employee ON public.employee_events (employee_id);\n\nCOMMIT;\n\n-- Opcional: insertar datos seed si vacío (se ejecuta únicamente si no hay empleados)\nDO $$\nBEGIN\n  IF (SELECT count(*) FROM public.employees) = 0 THEN\n    INSERT INTO public.teams (team_name, description) VALUES ('Operations','Equipo de operaciones'), ('Maintenance','Mantenimiento');\n    INSERT INTO public.employees (full_name, email, role, team_id) VALUES\n      ('Andrés Calderón','andres@aqualia.local','Supervisor',1),\n      ('Laura Perilla','laura@aqualia.local','Engineer',1),\n      ('Santiago Botero','santiago@aqualia.local','Technician',2);\n    INSERT INTO public.tasks (title, description, assigned_to, priority) VALUES\n      ('Revisión planta A','Inspección semanal',3,'high'),\n      ('Reparación válvula 12','Reparar fuga detectada',3,'critical');\n  END IF;\nEND\n$$;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        0
+      ],
+      "id": "c5816302-f232-47e3-9824-fb8ebe4d5e9f",
+      "name": "Create Tables (IF NOT EXISTS)",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, full_name, email, role, status, team_id FROM public.employees WHERE status = 'active';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        0
+      ],
+      "id": "9d6fb95a-cad4-4561-8190-a48cb7427aa5",
+      "name": "Fetch Active Employees",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, title, description, assigned_to, priority, status, created_at, due_date FROM public.tasks WHERE status IN ('open','in_progress');",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        160
+      ],
+      "id": "45a2dba4-7c2f-49df-a87d-2e8ac0b4daf2",
+      "name": "Fetch Open Tasks",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "/* Combine employees and tasks to compute simple workload per employee\n   Produces JSON array with objects { employee_id, full_name, email, role, team_id, task_count, tasks: [...] }\n*/\nconst employees = $items(\"node-fetch-employees\").map(i => i.json);\nconst tasks = $items(\"node-fetch-tasks\").map(i => i.json);\n\nconst map = {};\nfor (const e of employees) {\n  map[e.id] = {\n    employee_id: e.id,\n    full_name: e.full_name,\n    email: e.email,\n    role: e.role,\n    team_id: e.team_id,\n    task_count: 0,\n    tasks: []\n  };\n}\n\nfor (const t of tasks) {\n  if (t.assigned_to && map[t.assigned_to]) {\n    map[t.assigned_to].task_count += 1;\n    map[t.assigned_to].tasks.push({ id: t.id, title: t.title, priority: t.priority, status: t.status });\n  }\n}\n\nconst out = Object.values(map);\nreturn out.map(o => ({ json: o }));"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        80
+      ],
+      "id": "9308d837-75b9-44f8-a820-cec18e498e27",
+      "name": "Function"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        80
+      ],
+      "id": "a99d7484-4887-4847-8f61-02557f5ab431",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "l4VavEq77Owh5zeJ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/* Parse Gemini response (assumes Gemini returns a JSON array string).\n   Then, for each high/medium risk, insert an event and an audit log and prepare emails.\n*/\nconst aiResponse = $input.item.json;\n\n// If Gemini returned text content in 'content' or such, try to parse\nlet parsed = null;\n\n// Try different fields\nif (aiResponse && typeof aiResponse === 'object') {\n  // If Gemini node stored parsed JSON in .json, check common fields\n  if (aiResponse.content) {\n    try { parsed = JSON.parse(aiResponse.content); } catch (e) {}\n  }\n  if (!parsed && aiResponse.response) {\n    try { parsed = JSON.parse(aiResponse.response); } catch (e) {}\n  }\n  if (!parsed) {\n    // last resort: stringify and search for JSON array\n    try {\n      const txt = JSON.stringify(aiResponse);\n      const m = txt.match(/(\\[[\\s\\S]*\\])/);\n      if (m) parsed = JSON.parse(m[1]);\n    } catch (e) {\n      parsed = null;\n    }\n  }\n}\n\nif (!parsed) {\n  // If we cannot parse, return a log entry\n  return [{ json: { error: 'AI response could not be parsed', raw: aiResponse } }];\n}\n\nconst outputs = [];\nfor (const r of parsed) {\n  // Normalize fields\n  const empId = r.employee_id || r.employeeId || r.id;\n  const risk = (r.risk || r.level || 'low').toLowerCase();\n  const reason = r.reason || r.description || '';\n  const action = r.recommended_action || r.action || '';\n\n  // Build event insert payload\n  outputs.push({ json: { type: 'event', employee_id: empId, event_type: 'workload_risk', severity: risk === 'high' ? 'high' : (risk === 'medium' ? 'medium' : 'low'), description: reason, metadata: { recommended_action: action } } });\n\n  // Build audit payload\n  outputs.push({ json: { type: 'audit', workflow_name: 'ERM - Employee & Resource Management', action: 'AI Workload Analysis', payload: { employee_id: empId, risk: risk, reason: reason, action: action }, result: 'ok' } });\n\n  // Email notifications for high risk\n  if (risk === 'high') {\n    outputs.push({ json: { type: 'email', toEmployee: empId, subject: `Alerta: riesgo crítico de sobrecarga - Empleado ${empId}`, body: `Se detectó riesgo de sobrecarga en el empleado ${empId}.\\nRazón: ${reason}\\nAcción recomendada: ${action}` } });\n  }\n}\n\nreturn outputs;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        80
+      ],
+      "id": "c105a73d-fdf7-4d82-aa12-289795061098",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "mode": "list",
+          "value": "employee_events",
+          "cachedResultName": "employee_events"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        48,
+        80
+      ],
+      "id": "7471f605-4268-46d3-8e5e-53074e5bfb1c",
+      "name": "Insert employee_events",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "mode": "list",
+          "value": "audit_logs",
+          "cachedResultName": "audit_logs"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        384,
+        80
+      ],
+      "id": "76f75074-eba1-430d-b38f-61738f7cdcf8",
+      "name": "Insert audit_logs",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "laura.perilla-q@mail.escuelaing.edu.co",
+        "toEmail": "=andres.calderon-r@mail.escuelaing.edu.co, santiago.botero-g@mail.escuelaing.edu.co, ricardo.ayala-g@mail.escuelaing.edu.co, santiago.amaya-z@mail.escuelaing.edu.co, laura.perilla-q@mail.escuelaing.edu.co",
+        "subject": "=Notificación del ERM",
+        "emailFormat": "html",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        752,
+        80
+      ],
+      "id": "79873d1c-a577-49d8-b993-ffea2de8db5d",
+      "name": "Send Alert Email (SMTP)",
+      "webhookId": "64c91351-94f2-4709-bc0d-0cf7944aeb9d",
+      "credentials": {
+        "smtp": {
+          "id": "bJprEK5yBNisfuTh",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "/* Map the email 'toEmployee' (employee id) to actual email address by querying the employees table.\n   Accepts input items of type email with toEmployee set to employee_id\n*/\nconst items = $input.all();\nconst results = [];\n\nfor (const it of items) {\n  if (it.json.type === 'email' && it.json.toEmployee) {\n    // Request to fetch employee email via return item so that next Postgres node can use it\n    results.push({ json: { __action: 'resolve_email', employee_id: it.json.toEmployee, subject: it.json.subject, body: it.json.body } });\n  } else {\n    // pass through others\n    results.push({ json: it.json });\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        224,
+        80
+      ],
+      "id": "2320641d-9db2-4c3c-8962-78482bf62802",
+      "name": "Function1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, email FROM public.employees WHERE id = {{ $json.employee_id }} LIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        560,
+        80
+      ],
+      "id": "9dc889d8-5f8e-496e-9ecf-b99cf9ff3713",
+      "name": "Resolve Employee Email",
+      "credentials": {
+        "postgres": {
+          "id": "gyXDt2PS3zJ6Ccuo",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "/* Build final email item expected by Send Email node */\nconst emp = $input.item.json;\n// emp will come from Resolve Employee Email node: contains columns id,email\nconst parent = $input.all()[0].json; // original wrapper with subject/body\n\nreturn [{ json: { type: 'email-final', toEmployeeEmail: emp.email, subject: parent.subject, body: parent.body } }];"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        928,
+        80
+      ],
+      "id": "fefeb07b-02c7-43ad-83c0-8925c332f83d",
+      "name": "Function2"
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "shared": [
+    {
+      "updatedAt": "2025-11-21T00:04:20.971Z",
+      "createdAt": "2025-11-21T00:04:20.971Z",
+      "role": "workflow:owner",
+      "workflowId": "cPCCC18A3ledR7z5",
+      "projectId": "xno20arzPonor2IK"
+    }
+  ],
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-21T00:56:10.000Z",
+  "versionId": "df51e2f0-2639-4c25-b5ff-c13e7d5d2413"
+}
