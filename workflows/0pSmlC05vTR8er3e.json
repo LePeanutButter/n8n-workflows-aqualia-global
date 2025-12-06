@@ -130,7 +130,7 @@
               "id": "452efa28-2dc6-4ea3-a7a2-c35d100d0382",
               "name": "repo.name",
               "type": "string",
-              "value": "n8n-workflows-aqualia-global"
+              "value": "n8n-workflows-aquasense"
             },
             {
               "id": "81c4dc54-86bf-4432-a23f-22c7ea831e74",
@@ -228,7 +228,7 @@
         },
         "repository": {
           "__rl": true,
-          "value": "n8n-workflows-aqualia-global",
+          "value": "={{ $('Globals').item.json.repo.name }}",
           "mode": "name"
         },
         "filePath": "={{ $('Get all files in given path').item.json.path }}",
@@ -278,7 +278,7 @@
       "type": "n8n-nodes-base.n8n",
       "position": [
         912,
-        288
+        304
       ],
       "typeVersion": 1,
       "credentials": {
@@ -346,8 +346,15 @@
     }
   ],
   "staticData": null,
-  "tags": [],
+  "tags": [
+    {
+      "updatedAt": "2025-12-06T23:03:02.485Z",
+      "createdAt": "2025-12-06T23:03:02.485Z",
+      "id": "XhlHyiNabErISAFU",
+      "name": "GitHub"
+    }
+  ],
   "triggerCount": 0,
-  "updatedAt": "2025-11-17T19:38:15.087Z",
-  "versionId": "3a45b39b-740c-4ded-9151-ea1d7800674a"
+  "updatedAt": "2025-12-06T23:03:03.000Z",
+  "versionId": "60942d7a-6888-43b7-a848-3cf67ec3b6a4"
 }
