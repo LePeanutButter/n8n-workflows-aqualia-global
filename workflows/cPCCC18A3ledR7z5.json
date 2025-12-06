@@ -243,8 +243,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -2736,
-        -48
+        -2720,
+        -80
       ]
     },
     {
@@ -258,8 +258,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -2512,
-        -144
+        -2496,
+        -176
       ],
       "credentials": {
         "postgres": {
@@ -279,8 +279,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -2512,
-        48
+        -2496,
+        16
       ],
       "credentials": {
         "postgres": {
@@ -300,8 +300,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        -2320,
-        -32
+        -2304,
+        -64
       ]
     },
     {
@@ -313,8 +313,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -2080,
-        -32
+        -2064,
+        -64
       ]
     },
     {
@@ -326,8 +326,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1360,
-        -128
+        -1344,
+        -160
       ]
     },
     {
@@ -337,8 +337,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -1136,
-        -336
+        -1120,
+        -368
       ],
       "id": "40224a81-dbf1-47de-9774-525a11da377e",
       "name": "Google Gemini Chat Model",
@@ -359,8 +359,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3,
       "position": [
-        -1136,
-        -128
+        -1120,
+        -160
       ],
       "id": "ded82908-3fd1-413d-8e38-bb5191f6f354",
       "name": "AI Agent - Financial Analysis"
@@ -373,8 +373,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        -992,
-        -336
+        -976,
+        -368
       ],
       "id": "fecd1ebc-0dc8-4d5d-befb-98e8ce8a4a4b",
       "name": "Structured Output Parser"
@@ -387,8 +387,8 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        -720,
-        -128
+        -704,
+        -160
       ],
       "id": "0ee43343-1ae8-47f7-aa3b-f3ecb78e0200",
       "name": "Split Out"
@@ -420,8 +420,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -512,
-        -128
+        -496,
+        -160
       ],
       "id": "6d4eb638-261c-4292-a5d6-4bf27e9bc953",
       "name": "IF Requiere Alerta"
@@ -433,8 +433,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -304,
-        -144
+        -288,
+        -176
       ],
       "id": "bb41a2fa-ef53-4e8c-bcd5-cfedf6119dc1",
       "name": "Filter Critical Alerts"
@@ -447,8 +447,8 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        -96,
-        -144
+        -80,
+        -176
       ],
       "id": "605bb882-00aa-40e6-90bf-33356519c3b2",
       "name": "Aggregate Alerts"
@@ -460,8 +460,8 @@
       "type": "n8n-nodes-base.html",
       "typeVersion": 1.2,
       "position": [
-        112,
-        -144
+        128,
+        -176
       ],
       "id": "d4ac0dc7-4dcf-4620-827b-d33492792710",
       "name": "Generate HTML Report"
@@ -477,8 +477,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        320,
-        -144
+        336,
+        -176
       ],
       "id": "1dfe28ac-da87-429e-835c-47ebd605cf14",
       "name": "Send Alert Email",
@@ -498,8 +498,8 @@
       "type": "n8n-nodes-base.grafana",
       "typeVersion": 1,
       "position": [
-        112,
-        48
+        128,
+        16
       ],
       "id": "347e7896-e61a-4c37-9334-e09edcdf11f3",
       "name": "Get Grafana Dashboard",
@@ -524,8 +524,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
       "position": [
-        320,
-        48
+        336,
+        16
       ],
       "id": "60f5a4fb-ff20-4343-b15c-1bc1511be494",
       "name": "Update Grafana Dashboard",
@@ -668,8 +668,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        -1600,
-        48
+        -1584,
+        16
       ],
       "credentials": {
         "postgres": {
@@ -685,8 +685,8 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -1808,
-        -32
+        -1792,
+        -64
       ],
       "id": "f60c557f-2099-4b46-9edf-16a37f0e3563",
       "name": "Loop Over Items"
@@ -699,8 +699,8 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        -1600,
-        -128
+        -1584,
+        -160
       ],
       "id": "e88e8322-695f-4bf3-b1b0-2528daf7a729",
       "name": "Aggregate"
@@ -874,8 +874,15 @@
     }
   ],
   "staticData": null,
-  "tags": [],
+  "tags": [
+    {
+      "updatedAt": "2025-12-06T23:02:14.399Z",
+      "createdAt": "2025-12-06T23:01:34.502Z",
+      "id": "EOtNswDwaWouZBrL",
+      "name": "ERM"
+    }
+  ],
   "triggerCount": 0,
-  "updatedAt": "2025-12-04T22:56:06.000Z",
-  "versionId": "0dcaedab-0fa6-4086-ba70-bbc508aec511"
+  "updatedAt": "2025-12-06T23:01:36.000Z",
+  "versionId": "4a9cf4b1-f483-4d94-8d35-309a34993754"
 }
