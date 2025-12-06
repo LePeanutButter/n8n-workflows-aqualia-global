@@ -132,8 +132,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        -448,
-        960
+        -464,
+        1008
       ],
       "credentials": {
         "googlePalmApi": {
@@ -155,8 +155,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
       "position": [
-        -448,
-        752
+        -464,
+        800
       ]
     },
     {
@@ -170,8 +170,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        -80,
-        752
+        -96,
+        800
       ],
       "credentials": {
         "postgres": {
@@ -191,8 +191,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        -1120,
-        768
+        -1136,
+        816
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -218,8 +218,8 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
       "position": [
-        -1344,
-        768
+        -1360,
+        816
       ]
     },
     {
@@ -252,8 +252,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        -912,
-        768
+        -928,
+        816
       ]
     },
     {
@@ -265,8 +265,8 @@
       "type": "n8n-nodes-base.html",
       "typeVersion": 1,
       "position": [
-        400,
-        736
+        384,
+        784
       ]
     },
     {
@@ -278,8 +278,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -672,
-        752
+        -688,
+        800
       ]
     },
     {
@@ -295,8 +295,8 @@
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
-        624,
-        736
+        608,
+        784
       ],
       "webhookId": "0a21816a-c459-4e24-8da2-44c0b768f1a8",
       "credentials": {
@@ -314,8 +314,8 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        -304,
-        960
+        -320,
+        1008
       ],
       "id": "61b3e240-b7ad-4fcc-bd12-1310ae09f4b1",
       "name": "Structured Output Parser"
@@ -347,8 +347,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        128,
-        752
+        112,
+        800
       ],
       "id": "36cbbb94-3a54-457d-a201-dbd44cb7f622",
       "name": "If Alert Level Is Not Low"
@@ -459,6 +459,6 @@
     }
   ],
   "triggerCount": 0,
-  "updatedAt": "2025-11-29T18:08:29.000Z",
-  "versionId": "a477dfb0-21dc-497d-8bce-063d962dc359"
+  "updatedAt": "2025-12-06T23:01:08.000Z",
+  "versionId": "07385577-a3ec-417f-8059-0bd3483fd7b3"
 }
